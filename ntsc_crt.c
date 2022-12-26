@@ -237,8 +237,8 @@ main(int argc, char **argv)
 #define XMAX 624
 #define YMAX 832
 #else
-#define XMAX 832
-#define YMAX 624
+#define XMAX 832 * 2
+#define YMAX 624 * 2
 #endif
 static int *video = NULL;
 
@@ -257,90 +257,6 @@ static int raw = 0;
 SDL_Renderer *renderer;
 SDL_Texture *vidTex;
 SDL_Rect vidDest;
-
-// static void
-// updatecb(void)
-// {    
-//     if (pkb_key_pressed(FW_KEY_ESCAPE)) {
-//         sys_shutdown();
-//     }
-
-//     if (pkb_key_held('q')) {
-//         crt.black_point += 1;
-//         printf("crt.black_point   %d\n", crt.black_point);
-//     }
-//     if (pkb_key_held('a')) {
-//         crt.black_point -= 1;
-//         printf("crt.black_point   %d\n", crt.black_point);
-//     }
-
-//     if (pkb_key_held('w')) {
-//         crt.white_point += 1;
-//         printf("crt.white_point   %d\n", crt.white_point);
-//     }
-//     if (pkb_key_held('s')) {
-//         crt.white_point -= 1;
-//         printf("crt.white_point   %d\n", crt.white_point);
-//     }
-    
-//     if (pkb_key_held(FW_KEY_ARROW_UP)) {
-//         crt.brightness += 1;
-//         printf("%d\n", crt.brightness);
-//     }
-//     if (pkb_key_held(FW_KEY_ARROW_DOWN)) {
-//         crt.brightness -= 1;
-//         printf("%d\n", crt.brightness);
-//     }
-//     if (pkb_key_held(FW_KEY_ARROW_LEFT)) {
-//         crt.contrast -= 1;
-//         printf("%d\n", crt.contrast);
-//     }
-//     if (pkb_key_held(FW_KEY_ARROW_RIGHT)) {
-//         crt.contrast += 1;
-//         printf("%d\n", crt.contrast);
-//     }
-//     if (pkb_key_held('1')) {
-//         crt.saturation -= 1;
-//         printf("%d\n", crt.saturation);
-//     }
-//     if (pkb_key_held('2')) {
-//         crt.saturation += 1;
-//         printf("%d\n", crt.saturation);
-//     }
-//     if (pkb_key_held('3')) {
-//         noise -= 1;
-//         if (noise < 0) {
-//             noise = 0;
-//         }
-//         printf("%d\n", noise);
-//     }
-//     if (pkb_key_held('4')) {
-//         noise += 1;
-//         printf("%d\n", noise);
-//     }
-//     if (pkb_key_pressed(FW_KEY_SPACE)) {
-//         color ^= 1;
-//     }
-//     if (pkb_key_pressed('r')) {
-//         crt_reset(&crt);
-//     }
-//     if (pkb_key_pressed('f')) {
-//         field ^= 1;
-//         printf("field: %d\n", field);
-//     }
-//     if (pkb_key_pressed('e')) {
-//         progressive ^= 1;
-//         printf("progressive: %d\n", progressive);
-//     }
-//     if (pkb_key_pressed('t')) {
-//         raw ^= 1;
-//         printf("raw: %d\n", raw);
-//     }
-
-//     if (!progressive) {
-//         field ^= 1;
-//     }
-// }
 
 static void fade_phosphors(void)
 {
@@ -363,17 +279,17 @@ static void displaycb(void)
     static struct NTSC_SETTINGS ntsc;
     
     fade_phosphors();
-    
-    ntsc.rgb = img;
+    field ^= 1;
+    ntsc.rgb = (int *)img;
     ntsc.w = imgw;
     ntsc.h = imgh;
     ntsc.as_color = color;
     ntsc.field = field & 1;
     ntsc.raw = raw;
-    ntsc.cc[0] = 0;
-    ntsc.cc[1] = 1;
-    ntsc.cc[2] = 0;
-    ntsc.cc[3] = -1;
+    ntsc.cc[0] = 1;
+    ntsc.cc[1] = 0;
+    ntsc.cc[2] = -1;
+    ntsc.cc[3] = 0;
     
     crt_2ntsc(&crt, &ntsc);
     crt_draw(&crt, noise);
@@ -394,6 +310,88 @@ int handleInput()
 		case SDL_KEYDOWN:
 			if (event.key.keysym.sym == SDLK_ESCAPE)
 				return -1;
+
+            if (event.key.keysym.sym == SDLK_1) {
+                    crt.saturation -= 1;
+                    printf("%d\n", crt.saturation);
+            }
+            if (event.key.keysym.sym == SDLK_2) {
+                crt.saturation += 1;
+                printf("%d\n", crt.saturation);
+            }
+
+            if (event.key.keysym.sym == SDLK_q) {
+                crt.black_point += 1;
+                printf("crt.black_point   %d\n", crt.black_point);
+            }
+            if (event.key.keysym.sym == SDLK_a) {
+                crt.black_point -= 1;
+                printf("crt.black_point   %d\n", crt.black_point);
+            }
+
+            if (event.key.keysym.sym == SDLK_w) {
+                crt.white_point += 1;
+                printf("crt.white_point   %d\n", crt.white_point);
+            }
+            if (event.key.keysym.sym == SDLK_s) {
+                crt.white_point -= 1;
+                printf("crt.white_point   %d\n", crt.white_point);
+            }
+
+            if (event.key.keysym.sym == SDLK_UP) {
+                crt.brightness += 1;
+                printf("%d\n", crt.brightness);
+            }
+            if (event.key.keysym.sym == SDLK_DOWN) {
+                crt.brightness -= 1;
+                printf("%d\n", crt.brightness);
+            }
+            if (event.key.keysym.sym == SDLK_LEFT) {
+                crt.contrast -= 1;
+                printf("%d\n", crt.contrast);
+            }
+            if (event.key.keysym.sym == SDLK_RIGHT) {
+                crt.contrast += 1;
+                printf("%d\n", crt.contrast);
+            }
+            if (event.key.keysym.sym == SDLK_3) {
+                noise -= 5;
+                if (noise < 0) {
+                    noise = 0;
+                }
+                printf("%d\n", noise);
+            }
+            if (event.key.keysym.sym == SDLK_4) {
+                noise += 5;
+                printf("%d\n", noise);
+            }
+            if (event.key.keysym.sym == SDLK_SPACE) {
+                color ^= 1;
+            }
+            if (event.key.keysym.sym == SDLK_r) {
+                crt_reset(&crt);
+                color = 1;
+                noise = 0;
+                field = 0;
+                progressive = 1;
+                raw = 0;
+            }
+            if (event.key.keysym.sym == SDLK_f) {
+                field ^= 1;
+                printf("field: %d\n", field);
+            }
+            if (event.key.keysym.sym == SDLK_e) {
+                progressive ^= 1;
+                printf("progressive: %d\n", progressive);
+            }
+            if (event.key.keysym.sym == SDLK_t) {
+                raw ^= 1;
+                printf("raw: %d\n", raw);
+            }
+
+            if (!progressive) {
+                field ^= 1;
+            }
         }
 	}
 
@@ -403,46 +401,9 @@ int handleInput()
 }
 
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
-    // int werr;
-    
-    // sys_init();
-    // sys_updatefunc(updatecb);
-    // sys_displayfunc(displaycb);
-    // sys_keybfunc(pkb_keyboard);
-    // sys_keybupfunc(pkb_keyboardup);
-    
-    // clk_mode(FW_CLK_MODE_HIRES);
-    // pkb_reset();
-    // sys_sethz(60);
-    // sys_capfps(1);
-    
-    // werr = vid_open("crt", XMAX, YMAX, 1, FW_VFLAG_VIDFAST);
-    // if (werr != FW_VERR_OK) {
-    //     FW_error("unable to create window\n");
-    //     return EXIT_FAILURE;
-    // }
-    
-    // info = vid_getinfo();
-    // video = info->video;
-
-    // crt_init(&crt, info->width, info->height, video);
-
-    // /* put the name of your image file here */
-    // if (!ppm_read24("YOUR_IMAGE.ppm", &img, &imgw, &imgh, calloc)) {
-    //     printf("unable to read image\n");
-    //     return EXIT_FAILURE;
-    // }
-    // printf("loaded %d %d\n", imgw, imgh);
-
-    // sys_start();
-    
-    // sys_shutdown();
-
-
-        //setup SDL with title, 640x480, and load font
+    //setup SDL with title, 640x480, and load font
 	if (SDL_Init(SDL_INIT_VIDEO)) {
 		printf("Unable to initialize SDL: %s\n", SDL_GetError());
 		return 0;
@@ -460,20 +421,25 @@ main(int argc, char **argv)
 	vidDest.w = XMAX;
 	vidDest.h = YMAX;
 
-	vidTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, XMAX, YMAX);
+	vidTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STREAMING, XMAX, YMAX);
 
     int n;
-    img = stbi_load("../test.png", &imgw, &imgh, &n, 0);
+    stbi_uc *image = stbi_load("../test.png", &imgw, &imgh, &n, 0);
 
-    for (int index = 0; index < (imgh * imgw)*4; index+=4) {
-        unsigned char r = img[index + 0];
-        unsigned char g = img[index + 1];
-        unsigned char b = img[index + 2];
-        img[index + 0] = b;
-        img[index + 1] = g;
-        img[index + 2] = r;
-        img[index + 3] = 0;
+    img = malloc((imgh * imgw)*4);
+    int i = 0;
+    for (int index = 0; index < (imgh * imgw)*n; index+=n) {
+        unsigned char r = image[index + 0];
+        unsigned char g = image[index + 1];
+        unsigned char b = image[index + 2];
+        // unsigned char a = image[index + 3];
+        img[i + 0] = b; //red
+        img[i + 1] = g; //blue
+        img[i + 2] = r; //green
+        i+=4;
+        //img[index + 3] = 255;
     }
+    stbi_image_free(image);
 
     video = malloc(XMAX * sizeof(int) * YMAX);
     crt_init(&crt, XMAX, YMAX, video);
@@ -481,11 +447,12 @@ main(int argc, char **argv)
     //SDL_UpdateTexture(vidTex, NULL, img, width * sizeof(unsigned char) * n);
 
     do{
+
         displaycb();
         SDL_UpdateTexture(vidTex, NULL, video, XMAX * sizeof(Uint32));
         //clear screen, draw each element, then flip the buffer
         // Clear the screen
-        SDL_RenderClear(renderer);
+        //SDL_RenderClear(renderer);
         // Render the texture
         SDL_RenderCopy(renderer, vidTex, NULL, NULL);
         // Update the screen
