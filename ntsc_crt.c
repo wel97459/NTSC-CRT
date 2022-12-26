@@ -424,7 +424,7 @@ int main(int argc, char **argv)
 	vidTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STREAMING, XMAX, YMAX);
 
     int n;
-    stbi_uc *image = stbi_load("../test.png", &imgw, &imgh, &n, 0);
+    stbi_uc *image = stbi_load("../SMPTE_Color_Bars.png", &imgw, &imgh, &n, 0);
 
     img = malloc((imgh * imgw)*4);
     int i = 0;
@@ -447,7 +447,6 @@ int main(int argc, char **argv)
     //SDL_UpdateTexture(vidTex, NULL, img, width * sizeof(unsigned char) * n);
 
     do{
-
         displaycb();
         SDL_UpdateTexture(vidTex, NULL, video, XMAX * sizeof(Uint32));
         //clear screen, draw each element, then flip the buffer
@@ -461,6 +460,11 @@ int main(int argc, char **argv)
     //run until exit requested
     } while (handleInput() >= 0);
 
+    stbi_image_free(img);
+    free(vidTex);
+    free(window);
+    free(renderer);
+    free(video);
     return EXIT_SUCCESS;
 }
 
