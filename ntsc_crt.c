@@ -8,6 +8,7 @@
  *   Discord: https://discord.com/invite/hdYctSmyQJ
  */
 /*****************************************************************************/
+//#define CRT_DO_BLOOM 1
 #include "crt.h"
 
 #include <stdlib.h>
@@ -237,8 +238,8 @@ main(int argc, char **argv)
 #define XMAX 624
 #define YMAX 832
 #else
-#define XMAX 832 * 2
-#define YMAX 624 * 2
+#define XMAX 832
+#define YMAX 624
 #endif
 static int *video = NULL;
 
@@ -253,7 +254,7 @@ static int noise = 0;
 static int field = 0;
 static int progressive = 1;
 static int raw = 0;
-
+static int roll = 0;
 SDL_Renderer *renderer;
 SDL_Texture *vidTex;
 SDL_Rect vidDest;
@@ -290,11 +291,9 @@ static void displaycb(void)
     ntsc.cc[1] = 0;
     ntsc.cc[2] = -1;
     ntsc.cc[3] = 0;
-    
+    roll+=525;
     crt_2ntsc(&crt, &ntsc);
-    crt_draw(&crt, noise);
-
-    //SDL_UpdateTexture(vidTex, NULL, ntsc.rgb, (ntsc.w * ntsc.h) * sizeof(Uint32));
+    crt_draw(&crt, noise, roll);
 }
 
 int handleInput()

@@ -509,7 +509,7 @@ crt_2ntsc(struct CRT *v, struct NTSC_SETTINGS *s)
 #define VSYNC_WINDOW 8
 
 extern void
-crt_draw(struct CRT *v, int noise)
+crt_draw(struct CRT *v, int noise, int roll)
 {
     struct {
         int y, i, q;
@@ -526,14 +526,22 @@ crt_draw(struct CRT *v, int noise)
     int ccref[4]; /* color carrier signal */
    
     memset(ccref, 0, sizeof(ccref));
-    
+    int n = noise;
+    int r = roll % CRT_INPUT_SIZE;
     for (i = 0; i < CRT_INPUT_SIZE; i++) {
         static int rn = 194; /* 'random' noise */
 
         rn = (214019 * rn + 140327895);
 
         /* signal + noise */
-        s = v->analog[i] + (((((rn >> 16) & 0xff) - 0x7f) * noise) >> 8);
+        if (i > r && i < (CRT_HRES*40)+r)
+        {
+            n=250;
+        }else{
+            n = noise;
+        }
+        s = v->analog[i] + (((((rn >> 16) & 0xff) - 0x7f) * n) >> 8);
+        
         if (s >  127) { s =  127; }
         if (s < -127) { s = -127; }
         v->inp[i] = s;
