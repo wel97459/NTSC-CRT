@@ -19,6 +19,8 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 #define CMD_LINE_VERSION 0
 
@@ -234,6 +236,7 @@ main(int argc, char **argv)
 }
 #else
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #if 0
 #define XMAX 624
 #define YMAX 832
@@ -245,7 +248,8 @@ static int *video = NULL;
 
 static struct CRT crt;
 
-static stbi_uc *img;
+static stbi_uc *img = NULL;
+static stbi_uc *imgload = NULL;
 static int imgw;
 static int imgh;
 
@@ -255,9 +259,68 @@ static int field = 0;
 static int progressive = 1;
 static int raw = 0;
 static int roll = 0;
+static int hs = 4;
+static int vs = 100;
+static int frame = 1;
+static int play = 0;
 SDL_Renderer *renderer;
+SDL_Renderer *renderer_test;
 SDL_Texture *vidTex;
+SDL_Texture *texTarget;
+SDL_Texture* Message;
+SDL_Surface* surfaceMessage;
+SDL_Surface* pScreenShot = NULL;
 SDL_Rect vidDest;
+SDL_Window *window;
+TTF_Font *font;
+static int load_frame(char *loc)
+{
+    char name[256];
+    sprintf(name, "/home/winston/Downloads/youtube-dl/frames/img%04i.png", frame);
+
+    int n;
+    if(imgload != NULL) stbi_image_free(imgload);
+    imgload = stbi_load(name, &imgw, &imgh, &n, 4);
+    img = imgload;
+
+    if(frame<500){
+        SDL_Rect Message_rect;
+        Message_rect.x = imgw-(surfaceMessage->clip_rect.w+16);  //controls the rect's x coordinate 
+        Message_rect.y = 16; // controls the rect's y coordinte
+        Message_rect.w = surfaceMessage->clip_rect.w; // controls the width of the rect
+        Message_rect.h = surfaceMessage->clip_rect.h; // controls the height of the rect
+
+        
+        if(pScreenShot == NULL){
+            // Create an empty RGB surface that will be used to create the screenshot bmp file
+            pScreenShot = SDL_CreateRGBSurface(0, imgw, imgh, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
+            texTarget = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, imgw, imgh);
+        }
+
+        SDL_SetRenderTarget(renderer, texTarget);
+        SDL_UpdateTexture(texTarget, NULL, imgload, imgw * sizeof(Uint32));
+        SDL_RenderCopy(renderer, Message, NULL, &Message_rect);
+        // Read the pixels from the current render target and save them onto the surface
+        SDL_RenderReadPixels(renderer, NULL, SDL_GetWindowPixelFormat(window), pScreenShot->pixels, pScreenShot->pitch);
+	    //Detach the texture
+	    SDL_SetRenderTarget(renderer, NULL);
+
+        img = pScreenShot->pixels;
+    }
+
+
+    if(imgload == NULL){
+        printf("name: %s, err:%s\n",name, stbi_failure_reason());
+        return -1;
+    }
+    return n;
+}
+
+static void save_frame(char *loc, int f){
+    char name[256];
+    sprintf(name, "/home/winston/Downloads/youtube-dl/frames_out/img%04i.png", f);
+    stbi_write_png(name, XMAX, YMAX, 4, video, XMAX*4);
+}
 
 static void fade_phosphors(void)
 {
@@ -278,8 +341,13 @@ static void fade_phosphors(void)
 static void displaycb(void)
 {
     static struct NTSC_SETTINGS ntsc;
-    
-    fade_phosphors();
+
+    if(play){
+        load_frame(NULL);
+        frame++;
+    }
+
+    //fade_phosphors();
     field ^= 1;
     ntsc.rgb = (int *)img;
     ntsc.w = imgw;
@@ -291,9 +359,12 @@ static void displaycb(void)
     ntsc.cc[1] = 0;
     ntsc.cc[2] = -1;
     ntsc.cc[3] = 0;
-    roll+=525;
+    roll+=10;
     crt_2ntsc(&crt, &ntsc);
-    crt_draw(&crt, noise, roll);
+    crt_draw(&crt, noise, roll, vs, hs);
+    if(play){
+        save_frame(NULL, frame-1);
+    }
 }
 
 int handleInput()
@@ -354,14 +425,14 @@ int handleInput()
                 printf("%d\n", crt.contrast);
             }
             if (event.key.keysym.sym == SDLK_3) {
-                noise -= 5;
+                noise -= 1;
                 if (noise < 0) {
                     noise = 0;
                 }
                 printf("%d\n", noise);
             }
             if (event.key.keysym.sym == SDLK_4) {
-                noise += 5;
+                noise += 1;
                 printf("%d\n", noise);
             }
             if (event.key.keysym.sym == SDLK_SPACE) {
@@ -370,10 +441,11 @@ int handleInput()
             if (event.key.keysym.sym == SDLK_r) {
                 crt_reset(&crt);
                 color = 1;
-                noise = 0;
+                //noise = 0;
                 field = 0;
                 progressive = 1;
                 raw = 0;
+                frame = 1;
             }
             if (event.key.keysym.sym == SDLK_f) {
                 field ^= 1;
@@ -386,6 +458,55 @@ int handleInput()
             if (event.key.keysym.sym == SDLK_t) {
                 raw ^= 1;
                 printf("raw: %d\n", raw);
+            }
+
+            if (event.key.keysym.sym == SDLK_p) {
+                play ^= 1;
+                printf("play: %d\n", raw);
+            }
+
+            if (event.key.keysym.sym == SDLK_h) {
+                hs -= 1;
+                if (hs < 0) {
+                    hs = 0;
+                }
+                printf("%d\n", hs);
+            }
+            if (event.key.keysym.sym == SDLK_y) {
+                hs += 1;
+                printf("%d\n", hs);
+            }
+
+            if (event.key.keysym.sym == SDLK_j) {
+                vs -= 1;
+                if (vs < 0) {
+                    vs = 0;
+                }
+                printf("%d\n", vs);
+            }
+            if (event.key.keysym.sym == SDLK_u) {
+                vs += 1;
+                printf("%d\n", vs);
+            }
+
+            if (event.key.keysym.sym == SDLK_o) {
+                save_frame(NULL, 1);
+            }
+
+            if (event.key.keysym.sym == SDLK_COMMA) {
+                frame -= 1;
+                if (frame < 1) {
+                    frame = 1;
+                }
+                printf("%d\n", frame);
+            }
+            if (event.key.keysym.sym == SDLK_PERIOD) {
+                frame += 1;
+                printf("%d\n", frame);
+            }
+
+            if(event.key.keysym.sym == SDLK_PERIOD || event.key.keysym.sym == SDLK_COMMA){
+                load_frame(NULL);
             }
 
             if (!progressive) {
@@ -407,7 +528,7 @@ int main(int argc, char **argv)
 		printf("Unable to initialize SDL: %s\n", SDL_GetError());
 		return 0;
 	}
-    SDL_Window *window = SDL_CreateWindow("CosmacELF - SDL", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, XMAX, YMAX, 0);
+    window = SDL_CreateWindow("NTSC - SDL", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, XMAX, YMAX, 0);
 	if (!window) {
 		printf("Can't create window: %s\n", SDL_GetError());
 		return 0;
@@ -415,47 +536,67 @@ int main(int argc, char **argv)
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
+    /* Initialize the TTF library */
+    if (TTF_Init() < 0) {
+            fprintf(stderr, "Couldn't initialize TTF: %s\n",SDL_GetError());
+            SDL_Quit();
+            return 0;
+    }
+
+    font = TTF_OpenFont("../VCR_OSD_MONO_1.001.ttf", 50);
+    if(!font) {
+        printf("TTF_OpenFont: %s\n", TTF_GetError());
+        // handle error
+    }
+    assert(font);
+
     vidDest.x = (XMAX/2);
 	vidDest.y = (YMAX/2);
 	vidDest.w = XMAX;
 	vidDest.h = YMAX;
 
-	vidTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STREAMING, XMAX, YMAX);
+    SDL_Color White = {255, 255, 255};
 
-    int n;
-    stbi_uc *image = stbi_load("../SMPTE_Color_Bars.png", &imgw, &imgh, &n, 0);
+    // as TTF_RenderText_Solid could only be used on
+    // SDL_Surface then you have to create the surface first
+    const Uint16 text[]=u"PLAY \u25ba";
+    surfaceMessage = TTF_RenderUNICODE_Solid(font, text, White);
 
-    img = malloc((imgh * imgw)*4);
-    int i = 0;
-    for (int index = 0; index < (imgh * imgw)*n; index+=n) {
-        unsigned char r = image[index + 0];
-        unsigned char g = image[index + 1];
-        unsigned char b = image[index + 2];
-        // unsigned char a = image[index + 3];
-        img[i + 0] = b; //red
-        img[i + 1] = g; //blue
-        img[i + 2] = r; //green
-        i+=4;
-        //img[index + 3] = 255;
-    }
-    stbi_image_free(image);
+    // now you can convert it into a texture
+    Message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
+
+
+	vidTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, XMAX, YMAX);
+
+    frame = 200;
+    int n = load_frame(NULL);
 
     video = malloc(XMAX * sizeof(int) * YMAX);
     crt_init(&crt, XMAX, YMAX, video);
-    printf("h: %i, w: %i, n:%i, err:%s\n", imgw, imgh, n, stbi_failure_reason());
+
     //SDL_UpdateTexture(vidTex, NULL, img, width * sizeof(unsigned char) * n);
-
+    int fps = 0;
+    Uint32 t = SDL_GetTicks()+1000, T, TT = SDL_GetTicks();
     do{
-        displaycb();
-        SDL_UpdateTexture(vidTex, NULL, video, XMAX * sizeof(Uint32));
-        //clear screen, draw each element, then flip the buffer
-        // Clear the screen
-        //SDL_RenderClear(renderer);
-        // Render the texture
-        SDL_RenderCopy(renderer, vidTex, NULL, NULL);
-        // Update the screen
-        SDL_RenderPresent(renderer);
-
+        T = SDL_GetTicks();
+        //if(T > TT){
+            displaycb();
+            SDL_UpdateTexture(vidTex, NULL, video, XMAX * sizeof(Uint32));
+            //clear screen, draw each element, then flip the buffer
+            // Clear the screen
+            //SDL_RenderClear(renderer);
+            // Render the texture
+            SDL_RenderCopy(renderer, vidTex, NULL, NULL);
+            // Update the screen
+            SDL_RenderPresent(renderer);
+            fps++;
+            if(T > t){
+                printf("FPS:%i\n", fps);
+                fps = 0;
+                t = T + 1000;
+            }
+            //TT = SDL_GetTicks() + 4;
+        //}
     //run until exit requested
     } while (handleInput() >= 0);
 

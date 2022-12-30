@@ -475,12 +475,12 @@ crt_2ntsc(struct CRT *v, struct NTSC_SETTINGS *s)
             sx = (x * s->w) / destw;
             pA = s->rgb[sx + syA];
             pB = s->rgb[sx + syB];
-            rA = (pA >> 16) & 0xff;
+            bA = (pA >> 16) & 0xff;
             gA = (pA >>  8) & 0xff;
-            bA = (pA >>  0) & 0xff;
-            rB = (pB >> 16) & 0xff;
+            rA = (pA >>  0) & 0xff;
+            bB = (pB >> 16) & 0xff;
             gB = (pB >>  8) & 0xff;
-            bB = (pB >>  0) & 0xff;
+            rB = (pB >>  0) & 0xff;
 
             /* RGB to YIQ blend with potential pixel below */
             fy = (19595 * rA + 38470 * gA +  7471 * bA
@@ -509,7 +509,7 @@ crt_2ntsc(struct CRT *v, struct NTSC_SETTINGS *s)
 #define VSYNC_WINDOW 8
 
 extern void
-crt_draw(struct CRT *v, int noise, int roll)
+crt_draw(struct CRT *v, int noise, int roll, int vs, int hs)
 {
     struct {
         int y, i, q;
@@ -526,6 +526,7 @@ crt_draw(struct CRT *v, int noise, int roll)
     int ccref[4]; /* color carrier signal */
    
     memset(ccref, 0, sizeof(ccref));
+    int sn,cs;
     int n = noise;
     int r = roll % CRT_INPUT_SIZE;
     for (i = 0; i < CRT_INPUT_SIZE; i++) {
@@ -533,13 +534,10 @@ crt_draw(struct CRT *v, int noise, int roll)
 
         rn = (214019 * rn + 140327895);
 
-        /* signal + noise */
-        if (i > r && i < (CRT_HRES*40)+r)
-        {
-            n=250;
-        }else{
-            n = noise;
-        }
+        sincos14(&sn, &cs, (((i/CRT_HRES)*100)+r*50) & T14_MASK);
+
+        n = noise * abs((sn+T14_2PI)/T14_PI);
+        //n += noise;
         s = v->analog[i] + (((((rn >> 16) & 0xff) - 0x7f) * n) >> 8);
         
         if (s >  127) { s =  127; }
@@ -565,7 +563,7 @@ crt_draw(struct CRT *v, int noise, int roll)
             /* increase the multiplier to make the vsync
              * more stable when there is a lot of noise
              */
-            if (s <= (100 * SYNC_LEVEL)) {
+            if (s <= (vs * SYNC_LEVEL)) {
                 goto vsync_found;
             }
         }
@@ -616,7 +614,7 @@ vsync_found:
         s = 0;
         for (i = -HSYNC_WINDOW; i < HSYNC_WINDOW; i++) {
             s += sig[SYNC_BEG + i];
-            if (s <= (4 * SYNC_LEVEL)) {
+            if (s <= (hs * SYNC_LEVEL)) {
                 break;
             }
         }
@@ -712,10 +710,10 @@ vsync_found:
             if (g > 255) g = 255;
             if (b > 255) b = 255;
             
-            aa = (r << 16 | g << 8 | b);
+            aa =  (b << 16 | g << 8 | r);
             bb = *cL;
             /* blend with previous color there */
-            *cL++ = (((aa & 0xfefeff) >> 1) + ((bb & 0xfefeff) >> 1));
+            *cL++ = (((aa & 0xfefeff) >> 1) + ((bb & 0xfefeff) >> 1)) | 0xFF000000;
         }
         
         /* duplicate extra lines */

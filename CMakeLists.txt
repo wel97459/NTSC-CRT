@@ -22,4 +22,4 @@ add_executable(${CMAKE_PROJECT_NAME}
 	crt.c
 )
 
-target_link_libraries(${CMAKE_PROJECT_NAME} -lm ${SDL2_LIBRARIES})
+target_link_libraries(${CMAKE_PROJECT_NAME} -lm -lSDL2_ttf ${SDL2_LIBRARIES})
