@@ -276,7 +276,7 @@ TTF_Font *font;
 static int load_frame(char *loc)
 {
     char name[256];
-    sprintf(name, "/home/winston/Downloads/youtube-dl/frames/img%04i.png", frame);
+    sprintf(name, "../SMPTE_Color_Bars.png", frame);
 
     int n;
     if(imgload != NULL) stbi_image_free(imgload);
@@ -600,7 +600,7 @@ int main(int argc, char **argv)
     //run until exit requested
     } while (handleInput() >= 0);
 
-    stbi_image_free(img);
+    //stbi_image_free(img);
     free(vidTex);
     free(window);
     free(renderer);

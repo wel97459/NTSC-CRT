@@ -49,6 +49,58 @@ extern "C" {
 #define CRT_BOT         261    /* final line with active video */
 #define CRT_LINES       (CRT_BOT - CRT_TOP) /* number of active video lines */
 
+/*
+ *                      FULL HORIZONTAL LINE SIGNAL (~63500 ns)
+ * |---------------------------------------------------------------------------|
+ *   HBLANK (~10900 ns)                 ACTIVE VIDEO (~52600 ns)
+ * |-------------------||------------------------------------------------------|
+ *   
+ *   
+ *   WITHIN HBLANK PERIOD:
+ *   
+ *   FP (~1500 ns)  SYNC (~4700 ns)  BW (~600 ns)  CB (~2500 ns)  BP (~1600 ns)
+ * |--------------||---------------||------------||-------------||-------------|
+ *      BLANK            SYNC           BLANK          BLANK          BLANK
+ * 
+ */
+#define LINE_BEG         0
+#define FP_ns            1500      /* front porch */
+#define SYNC_ns          4700      /* sync tip */
+#define BW_ns            600       /* breezeway */
+#define CB_ns            2500      /* color burst */
+#define BP_ns            1600      /* back porch */
+#define AV_ns            52600     /* active video */
+#define HB_ns            (FP_ns + SYNC_ns + BW_ns + CB_ns + BP_ns) /* h blank */
+/* line duration should be ~63500 ns */
+#define LINE_ns          (FP_ns + SYNC_ns + BW_ns + CB_ns + BP_ns + AV_ns)
+
+/* convert nanosecond offset to its corresponding point on the sampled line */
+#define ns2pos(ns)       ((ns) * CRT_HRES / LINE_ns)
+/* starting points for all the different pulses */
+#define FP_BEG           ns2pos(0)
+#define SYNC_BEG         ns2pos(FP_ns)
+#define BW_BEG           ns2pos(FP_ns + SYNC_ns)
+#define CB_BEG           ns2pos(FP_ns + SYNC_ns + BW_ns)
+#define BP_BEG           ns2pos(FP_ns + SYNC_ns + BW_ns + CB_ns)
+#define AV_BEG           ns2pos(HB_ns)
+#define AV_LEN           ns2pos(AV_ns)
+
+/* somewhere between 7 and 12 cycles */
+#define CB_CYCLES   10
+
+/* frequencies for bandlimiting */
+#define L_FREQ           1431818 /* full line */
+#define Y_FREQ           420000  /* Luma   (Y) 4.2  MHz of the 14.31818 MHz */
+#define I_FREQ           150000  /* Chroma (I) 1.5  MHz of the 14.31818 MHz */
+#define Q_FREQ           55000   /* Chroma (Q) 0.55 MHz of the 14.31818 MHz */
+
+/* IRE units (100 = 1.0V, -40 = 0.0V) */
+#define WHITE_LEVEL      100
+#define BURST_LEVEL      20
+#define BLACK_LEVEL      7
+#define BLANK_LEVEL      0
+#define SYNC_LEVEL      -40
+
 struct CRT {
     signed char analog[CRT_INPUT_SIZE]; /* sampled at 14.31818 MHz */
     signed char inp[CRT_INPUT_SIZE]; /* CRT input, can be noisy */
